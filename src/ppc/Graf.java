@@ -4,29 +4,45 @@ import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.Statement;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Graf {
-    
+
     public Graf() {
-        
     }
-    
     private HashMap<IdentificatorStatie, Statie> tabelStatii = new HashMap<IdentificatorStatie, Statie>();
-    
+
     private class IdentificatorStatie {
-        
+
         public IdentificatorStatie(String nume_, String artera_) {
             nume = nume_;
             artera = artera_;
         }
-        
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof IdentificatorStatie)) {
+                return false;
+            }
+            IdentificatorStatie p = (IdentificatorStatie) obj;
+            return (p.nume.equals(this.nume) && p.artera.equals(this.artera));
+        }
+
+        @Override
+        public int hashCode() {
+            return 17 * nume.hashCode() + 31 * artera.hashCode();
+        }
         private String nume;
         private String artera;
     }
-        
+
+    public Statie getStatie(String nume, String artera) {
+        return tabelStatii.get(new IdentificatorStatie(nume, artera));
+    }
+
     // baga toate statiile din baza de date
     public void adaugaStatii() {
         try {
@@ -43,13 +59,13 @@ public class Graf {
                 String nume = rs.getString("nume");
                 String artera = rs.getString("artera");
                 int longitudine = rs.getInt("longitudine");
-                int latitudine = rs.getInt("longitudine");
+                int latitudine = rs.getInt("latitudine");
 
                 ++nrStatii;
                 Statie statie = new Statie(nrStatii, nume, artera, longitudine, latitudine);
-                tabelStatii.put(new IdentificatorStatie(nume,artera), statie);
+                tabelStatii.put(new IdentificatorStatie(nume, artera), statie);
             }
-            
+
             // Calculeaza legaturile
             stmt = (Statement) conn.createStatement();
             query = "select * from legaturi";
@@ -60,61 +76,118 @@ public class Graf {
                 String artera1 = rs.getString("artera1");
                 String statie2 = rs.getString("statie2");
                 String artera2 = rs.getString("artera2");
-                
+
                 Statie statie = tabelStatii.get(new IdentificatorStatie(statie1, artera1));
                 statie.adaugaLegatura(tabelStatii.get(new IdentificatorStatie(statie2, artera2)));
             }
-            
+
             conn.close();
         } catch (Exception ex) {
             Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
-    // baga toate traseele din baza de date
-    public void adaugaTrasee() {
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection conn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:3306/ppc", "root", "");
 
-            // Calculeaza statiile
-            Statement stmt = (Statement) conn.createStatement();
-            
-            for (int i=0; i<2; ++i) {
-                String query = "select * from linii where sens=" + i + " order by nr desc";
-                ResultSet rs = stmt.executeQuery(query);
+    private class TraseeBuilder extends Thread {
 
-                int nrStatii = 0;
-                Statie start = null;
-                while (rs.next()) {
-                    String numeStatie = rs.getString("numeStatie");
-                    String artera = rs.getString("artera");
-                    String linia = rs.getString("linia");
-                    int nr = rs.getInt("nr");
-                    int sens = rs.getInt("sens");
+        private ArrayList<String> linii = new ArrayList<String>();
 
-                    Statie destinatie = tabelStatii.get(new IdentificatorStatie(numeStatie, artera));
-                    if (start != null) {
-                        start.adaugaTransport(destinatie, linia);
-                        start = destinatie;
+        public TraseeBuilder(ArrayList<String> linii_) {
+            linii = linii_;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Class.forName("com.mysql.jdbc.Driver");
+                Connection conn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:3306/ppc", "root", "");
+
+                // Calculeaza statiile
+                Statement stmt = (Statement) conn.createStatement();
+
+                for (String linie : linii) {
+                    for (int i = 0; i < 2; ++i) {
+                        String query = "select * from linii where linia=" + linie + " and sens=" + i + " order by nr";
+                        if (i == 1) {
+                            query += " desc";
+                        }
+                        ResultSet rs = stmt.executeQuery(query);
+
+                        int nrStatii = 0;
+                        Statie start = null;
+                        while (rs.next()) {
+                            String numeStatie = rs.getString("numeStatie");
+                            String artera = rs.getString("artera");
+                            String linia = rs.getString("linia");
+                            int nr = rs.getInt("nr");
+                            int sens = rs.getInt("sens");
+
+                            Statie destinatie = tabelStatii.get(new IdentificatorStatie(numeStatie, artera));
+                            if (start != null) {
+                                start.adaugaTransport(destinatie, linia);
+                            }
+                            start = destinatie;
+                        }
                     }
                 }
+                conn.close();
+            } catch (Exception ex) {
+                Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
             }
-                    
-            conn.close();
-        } catch (Exception ex) {
-            Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
-    // determina ruta
+    // baga toate traseele din baza de date
+    public void adaugaTrasee() {
+        
+        ArrayList<String> secvential = new ArrayList<String>();
+        for (int i=1; i<=2000; ++i) {
+            secvential.add("" + i);
+        }
+        TraseeBuilder worker = new TraseeBuilder(secvential);
+        worker.start();
+        try {
+            worker.join();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return;
+        
+        
+        int nrWorkers = 30;
+        int sizePartitie = 25;
+        ArrayList<String> partitie[] = new ArrayList[nrWorkers];
+        for (int i=0; i<nrWorkers; ++i) {
+            partitie[i] = new ArrayList<String>();
+            for (int j=sizePartitie*i+1; j<sizePartitie*(i+1); ++j) {
+                partitie[i].add("" + j);
+            }
+        }
+        
+        ArrayList<TraseeBuilder> workers = new ArrayList<TraseeBuilder>();
+        // init
+        for (int i=0; i<nrWorkers; ++i) {
+            workers.add(new TraseeBuilder(partitie[i]));
+        }
+        // run
+        for (TraseeBuilder worker : workers) {
+            worker.start();
+        }
+        //join
+        for (TraseeBuilder worker : workers) {
+            try {
+                worker.join();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
     public void getRuta(Statie start, Statie destinatie) {
-        getRuta(start.id, destinatie.id);            
+        getRuta(start.id, destinatie.id);
     }
 
     // determina ruta pt id-uri
     public void getRuta(int start, int destinatie) {
         // NOT IMPLEMENTED
     }
-
 }

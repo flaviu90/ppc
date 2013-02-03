@@ -17,7 +17,7 @@ public class Statie {
         legaturi.add(statieLegatura);
     }
     
-    public void adaugaTransport(Statie destinatie, String linie) {
+    public synchronized void adaugaTransport(Statie destinatie, String linie) {
         Muchie m = linii.get(destinatie.id);
         if (m == null) {
             m = new Muchie(destinatie, getDistanta(this, destinatie));

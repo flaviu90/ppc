@@ -10,6 +10,11 @@ public class Muchie {
     }
     
     public void adaugaLinie(String linie) {
+        for (String ln : mijloaceTransport) {
+            if (ln.equals(linie)) {
+                return;
+            }
+        }
         mijloaceTransport.add(linie);
     }
     
