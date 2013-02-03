@@ -67,10 +67,41 @@ public class Graf {
             Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-        
+    
     // baga toate traseele din baza de date
     public void adaugaTrasee() {
-        
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection conn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:3306/ppc", "root", "");
+
+            // Calculeaza statiile
+            Statement stmt = (Statement) conn.createStatement();
+            
+            for (int i=0; i<2; ++i) {
+                String query = "select * from linii where sens=" + i + " order by nr desc";
+                ResultSet rs = stmt.executeQuery(query);
+
+                int nrStatii = 0;
+                Statie start = null;
+                while (rs.next()) {
+                    String numeStatie = rs.getString("numeStatie");
+                    String artera = rs.getString("artera");
+                    String linia = rs.getString("linia");
+                    int nr = rs.getInt("nr");
+                    int sens = rs.getInt("sens");
+
+                    Statie destinatie = tabelStatii.get(new IdentificatorStatie(numeStatie, artera));
+                    if (start != null) {
+                        start.adaugaTransport(destinatie, linia);
+                        start = destinatie;
+                    }
+                }
+            }
+                    
+            conn.close();
+        } catch (Exception ex) {
+            Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     // determina ruta

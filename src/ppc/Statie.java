@@ -17,13 +17,27 @@ public class Statie {
         legaturi.add(statieLegatura);
     }
     
-    public void adaugaTransport(int destination, String linie) {
-        Muchie m = linii.get(destination);
+    public void adaugaTransport(Statie destinatie, String linie) {
+        Muchie m = linii.get(destinatie.id);
         if (m == null) {
-            m = new Muchie(destination);
+            m = new Muchie(destinatie, getDistanta(this, destinatie));
+            linii.put(destinatie.id, m);
         }
         
         m.adaugaLinie(linie);
+    }
+    
+    private double getDistanta(Statie s1, Statie s2) {
+        int R = 6371;
+        double dLat = Math.toRadians(s2.latitudine-s1.latitudine);
+        double dLon = Math.toRadians(s2.longitudine-s1.longitudine);
+        double lat1 = Math.toRadians(s1.latitudine);
+        double lat2 = Math.toRadians(s2.latitudine);
+
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        double d = R * c;
+        return d;
     }
     
     int id;
