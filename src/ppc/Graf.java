@@ -22,6 +22,9 @@ public class Graf {
             nume = nume_;
             artera = artera_;
         }
+        
+        private String nume;
+        private String artera;
     }
         
     // baga toate statiile din baza de date
@@ -114,6 +117,4 @@ public class Graf {
         // NOT IMPLEMENTED
     }
 
-    private String nume;
-    private String artera;
 }
