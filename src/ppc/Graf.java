@@ -14,6 +14,7 @@ public class Graf {
     public Graf() {
     }
     private HashMap<IdentificatorStatie, Statie> tabelStatii = new HashMap<IdentificatorStatie, Statie>();
+    private HashMap<Integer, Statie> idToStatie = new HashMap<Integer, Statie>();
 
     private class IdentificatorStatie {
 
@@ -64,6 +65,7 @@ public class Graf {
                 ++nrStatii;
                 Statie statie = new Statie(nrStatii, nume, artera, longitudine, latitudine);
                 tabelStatii.put(new IdentificatorStatie(nume, artera), statie);
+                idToStatie.put(statie.id, statie);
             }
 
             // Calculeaza legaturile
@@ -138,7 +140,7 @@ public class Graf {
 
     // baga toate traseele din baza de date
     public void adaugaTrasee() {
-        
+        /*
         ArrayList<String> secvential = new ArrayList<String>();
         for (int i=1; i<=2000; ++i) {
             secvential.add("" + i);
@@ -151,10 +153,10 @@ public class Graf {
             Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
         }
         return;
+        */
         
-        
-        int nrWorkers = 30;
-        int sizePartitie = 25;
+        int nrWorkers = 20;
+        int sizePartitie = 35;
         ArrayList<String> partitie[] = new ArrayList[nrWorkers];
         for (int i=0; i<nrWorkers; ++i) {
             partitie[i] = new ArrayList<String>();
