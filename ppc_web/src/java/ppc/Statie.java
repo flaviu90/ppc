@@ -30,6 +30,11 @@ public class Statie {
         m.adaugaLinie(linie);
     }
     
+    @Override
+    public String toString() {
+    	return nume + "/" + artera;
+    }
+    
     public static double getDistanta(Statie s1, Statie s2) {
         int R = 6371;
         double dLat = Math.toRadians(s2.latitudine-s1.latitudine);

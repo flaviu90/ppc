@@ -44,6 +44,23 @@ public class Graf {
         private String nume;
         private String artera;
     }
+    
+    private class Rezultat {
+    	public Statie statie;
+    	public double cost;
+    	public int bus;
+    	
+    	Rezultat(Statie statie, double cost, int bus) {
+    		this.statie = statie;
+    		this.cost = cost;
+    		this.bus = bus;
+    	}
+    	
+    	@Override
+    	public String toString() {
+    		return statie.toString() + " " + cost + " " + bus;
+    	}
+    }
 
     public Statie getStatie(String nume, String artera) {
         return tabelStatii.get(new IdentificatorStatie(nume, artera));
@@ -195,7 +212,7 @@ public class Graf {
     }
 
     // determina ruta pt id-uri
-    public ArrayList<Statie> getRuta(int start, int destinatie) {
+    public ArrayList<Rezultat> getRuta(int start, int destinatie) {
         // init
         for (int i = 0; i < Nmax; ++i) {
             for (int a = 0; a < Amax; ++a) {
@@ -234,6 +251,7 @@ public class Graf {
                 best = a;
             }
         }
+        
         return drum(destinatie, best);
     }
 
@@ -335,15 +353,15 @@ public class Graf {
         }
     }
 
-    private ArrayList<Statie> drum(int id, int bus) {
+    private ArrayList<Rezultat> drum(int id, int bus) {
         System.out.println(idToStatie.get(id).nume + " " + cost[id][bus] + " " + bus);
         if (parinte[id][bus] == id) {
-            ArrayList<Statie> r = new ArrayList<Statie>();
-            r.add(idToStatie.get(id));
+            ArrayList<Rezultat> r = new ArrayList<Rezultat>();
+            r.add(new Rezultat(idToStatie.get(id), cost[id][bus], bus));
             return r;
         }
-        ArrayList<Statie> r = drum(parinte[id][bus], parinteBus[id][bus]);
-        r.add(idToStatie.get(id));
+        ArrayList<Rezultat> r = drum(parinte[id][bus], parinteBus[id][bus]);
+        r.add(new Rezultat(idToStatie.get(id), cost[id][bus], bus));
         return r;
     }
     private final int Nmax = 1300;
