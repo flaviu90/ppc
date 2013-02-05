@@ -8,6 +8,7 @@ public class PPC {
         G.adaugaStatii();
         G.adaugaTrasee();
         
+        /*
         Statie s = G.getStatie("UNIVERSITATE", "BD. REGINA ELISABETA");
         
         System.out.println(s.id + " " + s.nume + " " + s.artera + " " + s.latitudine + " " + s.longitudine);
@@ -23,6 +24,11 @@ public class PPC {
             }
             System.out.println();
         }
-                
+        */
+        
+        
+        Statie s1 = G.getStatie("PIATA UNIRII", "STR. HALELOR");
+        Statie s2 = G.getStatie("POD GROZAVESTI", "SPL. INDEPENDENTEI");
+        G.getRuta(s1, s2);
     }
 }

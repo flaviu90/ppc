@@ -2,6 +2,9 @@ package ppc;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Statie {
     
@@ -27,7 +30,7 @@ public class Statie {
         m.adaugaLinie(linie);
     }
     
-    private double getDistanta(Statie s1, Statie s2) {
+    public static double getDistanta(Statie s1, Statie s2) {
         int R = 6371;
         double dLat = Math.toRadians(s2.latitudine-s1.latitudine);
         double dLon = Math.toRadians(s2.longitudine-s1.longitudine);
@@ -37,6 +40,16 @@ public class Statie {
         double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
         double d = R * c;
+        /*
+        try {
+            Thread.sleep(2);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Statie.class.getName()).log(Level.SEVERE, null, ex);
+        }*/
+        Random r = new Random();
+        d = 0.3;
+        if (r.nextDouble() < 0.2)
+            d += r.nextDouble()/20;
         return d;
     }
     

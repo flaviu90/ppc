@@ -6,6 +6,11 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,7 +18,7 @@ public class Graf {
 
     public Graf() {
     }
-    private HashMap<IdentificatorStatie, Statie> tabelStatii = new HashMap<IdentificatorStatie, Statie>();
+    public HashMap<IdentificatorStatie, Statie> tabelStatii = new HashMap<IdentificatorStatie, Statie>();
     private HashMap<Integer, Statie> idToStatie = new HashMap<Integer, Statie>();
 
     private class IdentificatorStatie {
@@ -59,8 +64,8 @@ public class Graf {
             while (rs.next()) {
                 String nume = rs.getString("nume");
                 String artera = rs.getString("artera");
-                int longitudine = rs.getInt("longitudine");
-                int latitudine = rs.getInt("latitudine");
+                double longitudine = rs.getDouble("longitudine");
+                double latitudine = rs.getDouble("latitudine");
 
                 ++nrStatii;
                 Statie statie = new Statie(nrStatii, nume, artera, longitudine, latitudine);
@@ -109,9 +114,10 @@ public class Graf {
                 for (String linie : linii) {
                     for (int i = 0; i < 2; ++i) {
                         String query = "select * from linii where linia=" + linie + " and sens=" + i + " order by nr";
-                        if (i == 1) {
-                            query += " desc";
-                        }
+                        /*
+                         if (i == 1) {
+                         query += " desc";
+                         }*/
                         ResultSet rs = stmt.executeQuery(query);
 
                         int nrStatii = 0;
@@ -141,33 +147,33 @@ public class Graf {
     // baga toate traseele din baza de date
     public void adaugaTrasee() {
         /*
-        ArrayList<String> secvential = new ArrayList<String>();
-        for (int i=1; i<=2000; ++i) {
-            secvential.add("" + i);
-        }
-        TraseeBuilder worker = new TraseeBuilder(secvential);
-        worker.start();
-        try {
-            worker.join();
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return;
-        */
-        
+         ArrayList<String> secvential = new ArrayList<String>();
+         for (int i=1; i<=2000; ++i) {
+         secvential.add("" + i);
+         }
+         TraseeBuilder worker = new TraseeBuilder(secvential);
+         worker.start();
+         try {
+         worker.join();
+         } catch (InterruptedException ex) {
+         Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
+         }
+         return;
+         */
+
         int nrWorkers = 20;
         int sizePartitie = 35;
         ArrayList<String> partitie[] = new ArrayList[nrWorkers];
-        for (int i=0; i<nrWorkers; ++i) {
+        for (int i = 0; i < nrWorkers; ++i) {
             partitie[i] = new ArrayList<String>();
-            for (int j=sizePartitie*i+1; j<sizePartitie*(i+1); ++j) {
+            for (int j = sizePartitie * i + 1; j < sizePartitie * (i + 1); ++j) {
                 partitie[i].add("" + j);
             }
         }
-        
+
         ArrayList<TraseeBuilder> workers = new ArrayList<TraseeBuilder>();
         // init
-        for (int i=0; i<nrWorkers; ++i) {
+        for (int i = 0; i < nrWorkers; ++i) {
             workers.add(new TraseeBuilder(partitie[i]));
         }
         // run
@@ -190,6 +196,117 @@ public class Graf {
 
     // determina ruta pt id-uri
     public void getRuta(int start, int destinatie) {
-        // NOT IMPLEMENTED
+        // init
+        for (int i = 0; i < Nmax; ++i) {
+            locks[i] = new ReentrantLock();
+            cost[i] = Integer.MAX_VALUE;
+        }
+        cost[start] = 0;
+        parinte[start] = start;
+        Q.add(start);
+
+        // calculeaza
+        while (!Q.isEmpty()) {
+            Statie nod = idToStatie.get(Q.poll());
+            
+            //new Worker(nod).start();
+            proceseaza(nod);
+            try {
+                if (Q.isEmpty()) Thread.sleep(100);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        // recompune rezultatul
+        if (cost[destinatie] != Integer.MAX_VALUE) {
+            drum(destinatie);
+        }
     }
+
+    private class Worker extends Thread {
+
+        private Statie s;
+
+        public Worker(Statie s_) {
+            s = s_;
+        }
+
+        @Override
+        public void run() {
+            for (Statie next : s.legaturi) {
+                locks[next.id].lock();
+                try {
+                    if (cost[s.id] + 1 < cost[next.id]) {
+                        cost[next.id] = cost[s.id] + 1;
+                        parinte[next.id] = s.id;
+                        Q.add(next.id);
+                        //System.out.println(next.id + " " + cost[next.id]);
+                    }
+                } finally {
+                    locks[next.id].unlock();
+                }
+            }
+
+            for (Muchie m : s.linii.values()) {
+                Statie next = m.destinatie;
+                locks[next.id].lock();
+                try {
+                    if (cost[s.id] + Statie.getDistanta(s, next) < cost[next.id]) {
+                        cost[next.id] = cost[s.id] + Statie.getDistanta(s, next);
+                        parinte[next.id] = s.id;
+                        Q.add(next.id);
+                        //System.out.println("a");
+                        //System.out.println(next.id + " " + cost[next.id]);
+                    }
+                } finally {
+                    locks[next.id].unlock();
+                }
+            }
+        }
+    }
+
+    private void proceseaza(Statie s) {
+        for (Statie next : s.legaturi) {
+            locks[next.id].lock();
+            try {
+                if (cost[s.id] + 1 < cost[next.id]) {
+                    cost[next.id] = cost[s.id] + 1;
+                    parinte[next.id] = s.id;
+                    Q.add(next.id);
+                    //System.out.println(next.id + " " + cost[next.id]);
+                }
+            } finally {
+                locks[next.id].unlock();
+            }
+        }
+
+        for (Muchie m : s.linii.values()) {
+            Statie next = m.destinatie;
+            locks[next.id].lock();
+            try {
+                if (cost[s.id] + Statie.getDistanta(s, next) < cost[next.id]) {
+                    cost[next.id] = cost[s.id] + Statie.getDistanta(s, next);
+                    parinte[next.id] = s.id;
+                    Q.add(next.id);
+                    //System.out.println(next.id + " " + cost[next.id]);
+                }
+            } finally {
+                locks[next.id].unlock();
+            }
+        }
+    }
+
+    private void drum(int id) {
+        System.out.println(idToStatie.get(id).nume + " " + cost[id]);
+        if (parinte[id] == id) {
+            return;
+        }
+        drum(parinte[id]);
+    }
+    private final int Nmax = 10000;
+    double cost[] = new double[Nmax];
+    int parinte[] = new int[Nmax];
+    ReentrantLock locks[] = new ReentrantLock[Nmax];
+    ConcurrentLinkedQueue<Integer> Q = new ConcurrentLinkedQueue<Integer>();
 }
