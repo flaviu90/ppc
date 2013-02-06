@@ -17,6 +17,9 @@ public class Statie {
     }
     
     public void adaugaLegatura(Statie statieLegatura) {
+        if (this.latitudine != 0 && statieLegatura.latitudine !=0 && getDistantaReala(this, statieLegatura) > 0.3) {
+            return;
+        }
         legaturi.add(statieLegatura);
     }
     
@@ -43,18 +46,26 @@ public class Statie {
         double lat2 = Math.toRadians(s2.latitudine);
 
         double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));Random r = new Random();        
+        double d = R * c;
+        
+        d = 0.3;
+        if (r.nextDouble() < 0.1)
+            d += r.nextDouble()/20;
+        return d;
+    }
+    
+    public static double getDistantaReala(Statie s1, Statie s2) {
+        int R = 6371;
+        double dLat = Math.toRadians(s2.latitudine-s1.latitudine);
+        double dLon = Math.toRadians(s2.longitudine-s1.longitudine);
+        double lat1 = Math.toRadians(s1.latitudine);
+        double lat2 = Math.toRadians(s2.latitudine);
+
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
         double d = R * c;
-        /*
-        try {
-            Thread.sleep(2);
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Statie.class.getName()).log(Level.SEVERE, null, ex);
-        }*/
-        Random r = new Random();
-        d = 0.3;
-        if (r.nextDouble() < 0.2)
-            d += r.nextDouble()/20;
+        
         return d;
     }
     

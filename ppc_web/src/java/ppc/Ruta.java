@@ -6,6 +6,7 @@ package ppc;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -40,15 +41,16 @@ public class Ruta extends HttpServlet {
         
         Statie s1 = G.getStatie(plecare[0], plecare[1]);
         Statie s2 = G.getStatie(sosire[0], sosire[1]);
-        G.getRuta(s1, s2);
+        ArrayList<Graf.Rezultat> ruta = G.getRuta(s1, s2);
         
         
         response.setContentType("text/html;charset=UTF-8");
         PrintWriter out = response.getWriter();
         try {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("test");
-        } finally {            
+            for (Graf.Rezultat r : ruta) {
+                out.println(r.statie.nume + "," + r.statie.latitudine + "," + r.statie.longitudine + "," + r.bus + "," + r.cost + "|");
+            }
+        } finally {
             out.close();
         }
     }

@@ -6,6 +6,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,22 +45,23 @@ public class Graf {
         private String nume;
         private String artera;
     }
-    
-    private class Rezultat {
-    	public Statie statie;
-    	public double cost;
-    	public int bus;
-    	
-    	Rezultat(Statie statie, double cost, int bus) {
-    		this.statie = statie;
-    		this.cost = cost;
-    		this.bus = bus;
-    	}
-    	
-    	@Override
-    	public String toString() {
-    		return statie.toString() + " " + cost + " " + bus;
-    	}
+
+    public class Rezultat {
+
+        public Statie statie;
+        public double cost;
+        public int bus;
+
+        Rezultat(Statie statie, double cost, int bus) {
+            this.statie = statie;
+            this.cost = cost;
+            this.bus = bus;
+        }
+
+        @Override
+        public String toString() {
+            return statie.toString() + " " + cost + " " + bus;
+        }
     }
 
     public Statie getStatie(String nume, String artera) {
@@ -163,23 +165,23 @@ public class Graf {
 
     // baga toate traseele din baza de date
     public void adaugaTrasee() {
-        /*
-         ArrayList<String> secvential = new ArrayList<String>();
-         for (int i=1; i<=2000; ++i) {
-         secvential.add("" + i);
-         }
-         TraseeBuilder worker = new TraseeBuilder(secvential);
-         worker.start();
-         try {
-         worker.join();
-         } catch (InterruptedException ex) {
-         Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
-         }
-         return;
-         */
+        if (!FLAG_PARALEL) {
+            ArrayList<String> secvential = new ArrayList<String>();
+            for (int i = 1; i <= Nmax; ++i) {
+                secvential.add("" + i);
+            }
+            TraseeBuilder worker = new TraseeBuilder(secvential);
+            worker.start();
+            try {
+                worker.join();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Graf.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            return;
+        }
 
         int nrWorkers = 20;
-        int sizePartitie = 35;
+        int sizePartitie = Amax / nrWorkers;
         ArrayList<String> partitie[] = new ArrayList[nrWorkers];
         for (int i = 0; i < nrWorkers; ++i) {
             partitie[i] = new ArrayList<String>();
@@ -207,8 +209,8 @@ public class Graf {
         }
     }
 
-    public void getRuta(Statie start, Statie destinatie) {
-        getRuta(start.id, destinatie.id);
+    public ArrayList<Rezultat> getRuta(Statie start, Statie destinatie) {
+        return getRuta(start.id, destinatie.id);
     }
 
     // determina ruta pt id-uri
@@ -221,7 +223,9 @@ public class Graf {
             }
         }
         cost[start][0] = 0;
-        parinte[start][0] = start;
+        for (int a = 0; a < Amax; ++a) {
+            parinte[start][a] = start;
+        }
 
         Q.add(start);
 
@@ -231,8 +235,7 @@ public class Graf {
 
             if (FLAG_PARALEL) {
                 new Worker(nod).start();
-            }
-            else {
+            } else {
                 proceseaza(nod);
             }
             try {
@@ -251,7 +254,7 @@ public class Graf {
                 best = a;
             }
         }
-        
+
         return drum(destinatie, best);
     }
 
@@ -353,7 +356,7 @@ public class Graf {
         }
     }
 
-    private ArrayList<Rezultat> drum(int id, int bus) {
+    public ArrayList<Rezultat> drum(int id, int bus) {
         System.out.println(idToStatie.get(id).nume + " " + cost[id][bus] + " " + bus);
         if (parinte[id][bus] == id) {
             ArrayList<Rezultat> r = new ArrayList<Rezultat>();
@@ -364,13 +367,12 @@ public class Graf {
         r.add(new Rezultat(idToStatie.get(id), cost[id][bus], bus));
         return r;
     }
-    private final int Nmax = 1300;
-    private final int Amax = 800;
+    private final int Nmax = 1250;
+    private final int Amax = 700;
     double cost[][] = new double[Nmax][Amax];
     int parinte[][] = new int[Nmax][Amax];
     int parinteBus[][] = new int[Nmax][Amax];
     ReentrantLock locks[][] = new ReentrantLock[Nmax][Amax];
     ConcurrentLinkedQueue<Integer> Q = new ConcurrentLinkedQueue<Integer>();
-    
     boolean FLAG_PARALEL = true;
 }
